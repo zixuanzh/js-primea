@@ -27,7 +27,7 @@ const FUNC_INDEX_OFFSET = 1
 function generateWrapper (funcRef, container) {
   let wrapper = typeCheckWrapper(funcRef.params)
   const wasm = json2wasm(wrapper)
-  const mod = WebAssembly.Module(wasm)
+  const mod = new WebAssembly.Module(wasm)
   const self = funcRef
   wrapper = WebAssembly.Instance(mod, {
     'env': {
@@ -319,7 +319,7 @@ module.exports = class WasmContainer {
     ])
     wasm = Buffer.from(wasm, 'hex')
     json = JSON.parse(json)
-    this.mod = WebAssembly.Module(wasm)
+    this.mod = new WebAssembly.Module(wasm)
     this.json = json
     this.modSelf = ModuleRef.fromMetaJSON(json, this.actor.id)
   }

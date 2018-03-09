@@ -71,6 +71,7 @@ module.exports = class PrimeaServer {
   }
 
   async getNonce (id) {
+    id = this._getId(id)
     const node = await this.hypervisor.tree.get(id.id)
     const res = node.value[1]
     console.log(`getNonce ${id.id.toString('hex')}`, res)
