@@ -32,10 +32,10 @@
   "dependencies": {
     "binary-search-insert": "^1.0.3",
     "borc": "^2.0.2",
+    "dfinity-radix-tree": "git+https://github.com/dfinity/js-dfinity-radix-tree.git#crypto",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
-    "dfinity-radix-tree": "0.1.1",
-    "level-browserify": "^1.1.1",
     "events": "^2.0.0",
+    "level-browserify": "^1.1.1",
     "reference-map": "^1.2.3",
     "safe-buffer": "^5.1.1",
     "wasm-json-toolkit": "^0.2.2",
