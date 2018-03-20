@@ -46,28 +46,23 @@ module.exports = class PrimeaServer {
 
   async ingress (raw) {
     const tx = await DfinityTx.deserialize(raw)
-    const funcRef = FunctionRef.deserialize(tx.to)
+    var id, module, args;
+    if (tx.actorId === IO_ACTOR_ID) {
+      module = await this.hypervisor.createActor(TestWasmContainer.typeId, tx.args[0])
+      args = tx.args.slice(1)
+    }
+    else {
+      module = await this.hypervisor.loadActor(new ID(tx.actorId))
+      args = tx.args
+    }
+    const funcRef = module.getFuncRef(tx.funcname)
     funcRef.gas = tx.ticks
 
-    if (funcRef.destId.id === IO_ACTOR_ID) {
-      const { id, module } = await this.hypervisor.createActor(TestWasmContainer.typeId, tx.data)
-
-      funcRef.destId = id
-
-      this.hypervisor.send(new Message({
+    this.hypervisor.send(new Message({
         funcRef,
-      }))
-
-      return id.serialize()
-
-    } else {
-      this.hypervisor.send(new Message({
-        funcRef,
-        funcArguments: tx.data
-      }))
-
-      return 'ok'
-    }
+        funcArguments: args
+    }))
+    return 'ok'
   }
 
   async getNonce (id) {
