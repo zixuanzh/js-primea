@@ -33,9 +33,11 @@ module.exports = class PrimeaServer {
     this._opts = Object.assign(defaults, opts)
 
     const db = level(this._opts.dbPath)
+    const rootHash = this._opts.rootHash
 
     const tree = new RadixTree({
-      db
+      db: db,
+      root: rootHash
     })
 
     this.hypervisor = new Hypervisor(tree)
@@ -46,16 +48,17 @@ module.exports = class PrimeaServer {
 
   async ingress (raw) {
     const tx = await DfinityTx.deserialize(raw)
-    var id, module, args;
+    var id, funcRef, args;
     if (tx.actorId === IO_ACTOR_ID) {
-      module = await this.hypervisor.createActor(TestWasmContainer.typeId, tx.args[0])
+      const {id, module} = await this.hypervisor.createActor(TestWasmContainer.typeId, tx.args[0])
+      funcRef = module.getFuncRef(tx.funcname)
       args = tx.args.slice(1)
     }
     else {
-      module = await this.hypervisor.loadActor(new ID(tx.actorId))
+      const module = await this.hypervisor.loadActor(new ID(tx.actorId))
+      funcRef = module.getFuncRef(tx.funcname)
       args = tx.args
     }
-    const funcRef = module.getFuncRef(tx.funcname)
     funcRef.gas = tx.ticks
 
     this.hypervisor.send(new Message({
@@ -92,7 +95,7 @@ module.exports = class PrimeaServer {
   async getStateRoot () {
     const res = await this.hypervisor.createStateRoot()
     console.log('getStateRoot', res)
-    return cbor.encode(res)
+    return res['/']
   }
 
   _getId (encodedId) {
@@ -105,6 +108,7 @@ module.exports = class PrimeaServer {
   static get defaults () {
     return {
       dbPath: './testdb',
+      rootHash: 0,
     }
   }
 }
