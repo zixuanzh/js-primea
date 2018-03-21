@@ -48,7 +48,6 @@ module.exports = class Hypervisor {
       type,
       code,
       storage: storage || [],
-      cachedb: this.tree.dag._dag,
       tree: this.tree
     })
 
@@ -68,7 +67,7 @@ module.exports = class Hypervisor {
     let idHash = this._hash(encoded)
     idHash = new ID(idHash)
     const module = await Container.onCreation(code, idHash, this.tree)
-    const metaData = [type, id.nonce]
+    const metaData = [type, 0]
 
     // save the container in the state
     const node = await this.tree.set(idHash.id, metaData)
