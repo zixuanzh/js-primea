@@ -29,7 +29,7 @@ function generateWrapper (funcRef, container) {
   const wasm = json2wasm(wrapper)
   const mod = new WebAssembly.Module(wasm)
   const self = funcRef
-  wrapper = WebAssembly.Instance(mod, {
+  wrapper = new WebAssembly.Instance(mod, {
     'env': {
       'checkTypes': function () {
         const args = [...arguments]
@@ -209,7 +209,7 @@ module.exports = class WasmContainer {
   async onMessage (message) {
     const funcRef = message.funcRef
     const intef = this.getInterface(funcRef)
-    this.instance = WebAssembly.Instance(this.mod, intef)
+    this.instance = new WebAssembly.Instance(this.mod, intef)
     // map table indexes
     const table = this.instance.exports.table
     if (table) {
@@ -290,7 +290,7 @@ module.exports = class WasmContainer {
   async onStartup () {
     const code = this.actor.code
     const {json, wasm, modRef} = WasmContainer.createModule(code, this.actor.id)
-    this.mod = WebAssembly.Module(wasm)
+    this.mod = new WebAssembly.Module(wasm)
     this.json = json
     this.modSelf = modRef
   }
