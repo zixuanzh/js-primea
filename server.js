@@ -10,20 +10,25 @@ const RadixTree = require('dfinity-radix-tree')
 const DfinityTx = require('dfinity-tx')
 
 class TestWasmContainer extends WasmContainer {
+  constructor (actor) {
+    super(actor)
+    this._storage = new Map()
+  }
   getInterface (funcRef) {
     const orginal = super.getInterface(funcRef)
     return Object.assign(orginal, {
       test: {
+        check: (a, b) => {
+        },
         print: (dataRef) => {
-          console.log('print dataRef', dataRef)
-          const buf = this.refs.get(dataRef, 'buf')
-          console.log('print buf', buf)
+          let buf = this.refs.get(dataRef, 'buf')
           console.log(buf.toString())
         }
-      },
+      }
     })
   }
 }
+
 
 const IO_ACTOR_ID = 0
 
@@ -67,7 +72,7 @@ module.exports = class PrimeaServer {
     this.hypervisor.send(new Message({
       funcRef,
       funcArguments: args
-    }))
+    }).on('execution:error', e => console.log(e)))
     return id.serialize()
   }
 
@@ -99,6 +104,11 @@ module.exports = class PrimeaServer {
     const res = await this.hypervisor.createStateRoot()
     console.log('getStateRoot', res)
     return res['/']
+  }
+
+  setStateRoot (root) {
+    console.log('setStateRoot', root)
+    this.hypervisor.tree.root['/'] = root
   }
 
   _getId (encodedId) {
