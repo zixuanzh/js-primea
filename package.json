@@ -30,8 +30,11 @@
   "contributors": "Alex Beregszaszi <alex@rtfs.hu>",
   "license": "MPL-2.0",
   "dependencies": {
+    "args": "^3.0.8",
     "binary-search-insert": "^1.0.3",
     "borc": "^2.0.2",
+    "debug": "^3.1.0",
+    "dfinity-radix-tree": "git+https://github.com/dfinity/js-dfinity-radix-tree.git#crypto",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",
@@ -39,7 +42,8 @@
     "reference-map": "^1.2.3",
     "safe-buffer": "^5.1.1",
     "wasm-json-toolkit": "^0.2.3",
-    "wasm-metering": "^0.1.1"
+    "wasm-metering": "^0.1.1",
+    "zeromq": "^4.6.0"
   },
   "devDependencies": {
     "levelup": "^2.0.2",
