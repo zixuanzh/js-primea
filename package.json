@@ -35,7 +35,7 @@
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",
-    "primea-annotations": "0.0.1",
+    "primea-annotations": "^0.0.2",
     "reference-map": "^1.2.3",
     "safe-buffer": "^5.1.1",
     "wasm-json-toolkit": "^0.2.3",
