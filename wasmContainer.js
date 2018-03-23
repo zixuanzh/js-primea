@@ -10,6 +10,15 @@ const {FunctionRef, ModuleRef, DEFAULTS} = require('./systemObjects.js')
 const nativeTypes = new Set(['i32', 'i64', 'f32', 'f64'])
 const FUNC_INDEX_OFFSET = 1
 
+function fromMetaJSON (json, id) {
+  const exports = {}
+  for (const ex in json.exports) {
+    const type = json.types[json.indexes[json.exports[ex].toString()]].params
+    exports[ex] = type
+  }
+  return new ModuleRef(exports, id)
+}
+
 function generateWrapper (funcRef, container) {
   let wrapper = typeCheckWrapper(funcRef.params)
   const wasm = json2wasm(wrapper)
@@ -58,13 +67,12 @@ module.exports = class WasmContainer {
     })
 
     // initialize the globals
-    let numOfGlobals = json.persist.length
-    if (numOfGlobals) {
+    if (json.persist.length) {
       moduleJSON = injectGlobals(moduleJSON, json.persist)
     }
     // recompile the wasm
     wasm = json2wasm(moduleJSON)
-    const modRef = ModuleRef.fromMetaJSON(json, id)
+    const modRef = fromMetaJSON(json, id)
     return {
       wasm,
       json,
@@ -185,7 +193,7 @@ module.exports = class WasmContainer {
       metering: {
         usegas: amount => {
           this.actor.incrementTicks(amount)
-          // funcRef.gas -= amount
+          funcRef.gas -= amount
           if (funcRef.gas < 0) {
             throw new Error('out of gas! :(')
           }
@@ -241,13 +249,14 @@ module.exports = class WasmContainer {
     // store globals
     numOfGlobals = this.json.persist.length
     if (numOfGlobals) {
-      this.actor.storage = []
+      const storage = []
       this.instance.exports.getter_globals()
       const mem = this.get32Memory(0, numOfGlobals)
       while (numOfGlobals--) {
         const ref = mem[numOfGlobals]
-        this.actor.storage.push(this.refs.get(ref, this.json.persist[numOfGlobals].type))
+        storage.push(this.refs.get(ref, this.json.persist[numOfGlobals].type))
       }
+      this.actor.storage = storage
     }
 
     this.refs.clear()

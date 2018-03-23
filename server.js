@@ -1,7 +1,7 @@
 const cbor = require('borc')
 const Message = require('./message.js')
 const Hypervisor = require('./')
-const {ID, FunctionRef} = require('./systemObjects')
+const {ID, decoder} = require('./systemObjects')
 const WasmContainer = require('./wasmContainer.js')
 
 const level = require('level-browserify')
@@ -72,7 +72,7 @@ module.exports = class PrimeaServer {
       funcRef,
       funcArguments: args
     }).on('execution:error', e => console.log(e)))
-    return id.serialize()
+    return cbor.encode(id)
   }
 
   async getNonce (id) {
@@ -112,7 +112,7 @@ module.exports = class PrimeaServer {
 
   _getId (encodedId) {
     if (!(encodedId instanceof ID)) {
-      return ID.deserialize(encodedId)
+      return decoder.decodeFirst(encodedId)
     }
     return encodedId
   }
