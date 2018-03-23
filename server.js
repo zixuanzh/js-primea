@@ -45,28 +45,27 @@ module.exports = class PrimeaServer {
       root: rootHash
     })
 
-    this.hypervisor = new Hypervisor(tree)
-    this.hypervisor.registerContainer(TestWasmContainer)
+    this.hypervisor = new Hypervisor(tree, [TestWasmContainer])
 
-    console.log('starting primea')
+    console.log('primea: started')
   }
 
   async ingress (raw) {
     const tx = await DfinityTx.deserialize(raw)
+    const args = tx.args
 
-    let id, funcRef, args
+    let id, module
     if (tx.actorId === IO_ACTOR_ID) {
-      const actor = await this.hypervisor.createActor(TestWasmContainer.typeId, tx.args[0])
+      const actor = await this.hypervisor.createActor(TestWasmContainer.typeId, args.shift())
       id = actor.id
-      funcRef = actor.module.getFuncRef(tx.funcname)
-      args = tx.args.slice(1)
+      module = actor.module
 
     } else {
       id = new ID(tx.actorId)
-      const module = await this.hypervisor.loadActor(id.id)
-      funcRef = module.getFuncRef(tx.funcname)
-      args = tx.args
+      module = await this.hypervisor.loadActor(id.id)
     }
+
+    const funcRef = module.getFuncRef(tx.funcname)
     funcRef.gas = tx.ticks
 
     this.hypervisor.send(new Message({
