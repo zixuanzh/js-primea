@@ -192,6 +192,9 @@ module.exports = class WasmContainer {
       },
       metering: {
         usegas: amount => {
+          if (amount < 0) {
+            throw new Error('no negative gas!')
+          }
           this.actor.incrementTicks(amount)
           funcRef.gas -= amount
           if (funcRef.gas < 0) {
@@ -242,6 +245,9 @@ module.exports = class WasmContainer {
     if (funcRef.identifier[0]) {
       this.instance.exports.table.get(funcRef.identifier[1])(...args)
     } else {
+      if (!this.instance.exports[funcRef.identifier[1]]) {
+        throw new Error(`function not found: ${funcRef.identifier[1]}`)
+      }
       this.instance.exports[funcRef.identifier[1]](...args)
     }
     await this.onDone()
