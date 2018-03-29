@@ -31,7 +31,7 @@
   "license": "MPL-2.0",
   "dependencies": {
     "binary-search-insert": "^1.0.3",
-    "borc": "git+https://github.com:dignifiedquire/borc.git#fix/nested-array",
+    "borc": "git+https://github.com/dignifiedquire/borc.git#fix/nested-array",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",

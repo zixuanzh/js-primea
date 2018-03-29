@@ -105,9 +105,8 @@ module.exports = class PrimeaServer {
     return res['/']
   }
 
-  setStateRoot (root) {
-    console.log('setStateRoot', root)
-    this.hypervisor.tree.root['/'] = root
+  async setStateRoot (root) {
+    this.hypervisor.setStateRoot(root)
   }
 
   _getId (encodedId) {
