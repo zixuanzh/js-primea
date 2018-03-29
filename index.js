@@ -1,7 +1,8 @@
 const crypto = require('crypto')
 const Actor = require('./actor.js')
 const Scheduler = require('./scheduler.js')
-const {ID, decoder} = require('./systemObjects.js')
+const {ID, decoder} = require('primea-objects')
+const cbor = require('borc')
 
 module.exports = class Hypervisor {
   /**
@@ -18,6 +19,7 @@ module.exports = class Hypervisor {
     containers.forEach(container => this.registerContainer(container))
     drivers.forEach(driver => this.registerDriver(driver))
   }
+
 
   /**
    * sends a message
@@ -66,13 +68,13 @@ module.exports = class Hypervisor {
   createActor (type, code, id = {nonce: this.nonce++, parent: null}) {
     const Container = this._containerTypes[type]
     const encoded = encodedID(id)
-    let idHash = this._hash(encoded)
-    idHash = new ID(idHash)
-    const module = Container.onCreation(code, idHash, this.tree)
+    id = this._hash(encoded)
+    id = new ID(id)
+    const module = Container.onCreation(code, id, this.tree)
     const metaData = [type, 0]
 
     // save the container in the state
-    this.tree.set(idHash.id, metaData).then(node => {
+    this.tree.set(id.id, metaData).then(node => {
       // save the code
       node[1] = {
         '/': code
@@ -84,7 +86,7 @@ module.exports = class Hypervisor {
     })
 
     return {
-      id: idHash,
+      id,
       module
     }
   }
@@ -107,7 +109,14 @@ module.exports = class Hypervisor {
         this.scheduler.once('idle', resolve)
       })
     }
+    await this.tree.set(Buffer.from([0]), this.nonce)
     return this.tree.flush()
+  }
+
+  async setStateRoot (stateRoot) {
+    this.tree.root = stateRoot
+    const node = await this.tree.get(Buffer.from([0]))
+    this.nonce = node.value
   }
 
   /**
@@ -121,15 +130,14 @@ module.exports = class Hypervisor {
   }
 
   registerDriver (driver) {
-    this.scheduler.drivers.set(driver.id.id.toString('hex'), driver)
+    this.scheduler.drivers.set(driver.id.toString(), driver)
   }
 }
 
 function encodedID (id) {
-  const nonce = Buffer.from([id.nonce])
   if (id.parent) {
-    return Buffer.concat([nonce, id.parent.id])
+    return cbor.encode([id.nonce, id.parent.id])
   } else {
-    return nonce
+    return cbor.encode([id.nonce, null])
   }
 }

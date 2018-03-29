@@ -2,10 +2,9 @@ const {wasm2json, json2wasm} = require('wasm-json-toolkit')
 const annotations = require('primea-annotations')
 const wasmMetering = require('wasm-metering')
 const ReferanceMap = require('reference-map')
-const Message = require('./message.js')
 const injectGlobals = require('./injectGlobals.js')
 const typeCheckWrapper = require('./typeCheckWrapper.js')
-const {FunctionRef, ModuleRef, DEFAULTS} = require('./systemObjects.js')
+const {Message, FunctionRef, ModuleRef, DEFAULTS} = require('primea-objects')
 
 const nativeTypes = new Set(['i32', 'i64', 'f32', 'f64'])
 const FUNC_INDEX_OFFSET = 1
@@ -100,7 +99,7 @@ module.exports = class WasmContainer {
             const ref = new FunctionRef({
               identifier: [true, func.tableIndex],
               params,
-              id: self.actor.id
+              actorID: self.actor.id
             })
             return self.refs.add(ref, 'func')
           }
@@ -110,11 +109,11 @@ module.exports = class WasmContainer {
           const wrapper = generateWrapper(funcRef, self)
           this.instance.exports.table.set(index, wrapper.exports.check)
         },
-        catch: (ref, catchRef) => {
-          const {funcRef} = self.refs.get(ref, FunctionRef)
-          const {funcRef: catchFunc} = self.refs.get(ref, FunctionRef)
-          funcRef.catch = catchFunc
-        },
+        // catch: (ref, catchRef) => {
+        //   const {funcRef} = self.refs.get(ref, FunctionRef)
+        //   const {funcRef: catchFunc} = self.refs.get(ref, FunctionRef)
+        //   funcRef.catch = catchFunc
+        // },
         get_gas_budget: (funcRef) => {
           const func = self.refs.get(funcRef, 'func')
           return func.gas

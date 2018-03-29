@@ -1,7 +1,7 @@
 const tape = require('tape')
 const fs = require('fs')
 const path = require('path')
-const Message = require('../message.js')
+const {Message} = require('primea-objects')
 const Hypervisor = require('../')
 const WasmContainer = require('../wasmContainer.js')
 
