@@ -1,7 +1,7 @@
 const cbor = require('borc')
-const Message = require('./message.js')
 const Hypervisor = require('./')
-const {ID, decoder} = require('./systemObjects')
+const EgressDriver = require('./egressDriver')
+const { ID, Message, decoder: objectDecoder } = require('primea-objects')
 const WasmContainer = require('./wasmContainer.js')
 
 const level = require('level-browserify')
@@ -21,7 +21,7 @@ class TestWasmContainer extends WasmContainer {
         check: (a, b) => {
         },
         print: (dataRef) => {
-          let buf = this.refs.get(dataRef, 'buf')
+          let buf = this.refs.get(dataRef, 'data')
           console.log(buf.toString())
         }
       }
@@ -29,6 +29,9 @@ class TestWasmContainer extends WasmContainer {
   }
 }
 
+const decoder = new cbor.Decoder({
+  tags: Object.assign(objectDecoder._knownTags, DfinityTx.getDecoder()._knownTags)
+})
 
 const IO_ACTOR_ID = 0
 
@@ -45,41 +48,45 @@ module.exports = class PrimeaServer {
       root: rootHash
     })
 
-    this.hypervisor = new Hypervisor(tree, [TestWasmContainer])
+    this.egress = new EgressDriver()
 
-    console.log('primea: started')
+    this.hypervisor = new Hypervisor(tree, this._opts.containers, [this.egress])
   }
 
   async ingress (raw) {
-    const tx = await DfinityTx.deserialize(raw)
-    const args = tx.args
+    const [ tx, pk, sig ] = decoder.decodeFirst(raw)
+    const args = tx.args.map(arg => {
+      if (arg instanceof cbor.Tagged) {
+        return decoder.decodeFirst(cbor.encode(arg))
+      }
+      return arg
+    })
 
-    let id, module
+    let id, module, funcRef
     if (tx.actorId === IO_ACTOR_ID) {
-      const actor = await this.hypervisor.createActor(TestWasmContainer.typeId, args.shift())
+      const actor = await this.hypervisor.createActor(this._opts.containers[0].typeId, args.shift())
       id = actor.id
       module = actor.module
-
+      funcRef = module.getFuncRef(tx.funcName)
     } else {
-      id = new ID(tx.actorId)
-      module = await this.hypervisor.loadActor(id.id)
+      funcRef = tx.funcName
     }
-
-    const funcRef = module.getFuncRef(tx.funcname)
     funcRef.gas = tx.ticks
 
-    this.hypervisor.send(new Message({
-      funcRef,
-      funcArguments: args
-    }).on('execution:error', e => console.log(e)))
-    return cbor.encode(id)
+    if (tx.funcName) {
+      this.hypervisor.send(new Message({
+        funcRef,
+        funcArguments: args
+      }).on('execution:error', e => this.egress.emit('error', e)))
+    }
+
+    return cbor.encode(module)
   }
 
   async getNonce (id) {
     id = this._getId(id)
     const node = await this.hypervisor.tree.get(id.id)
     const res = node.value[1]
-    console.log(`getNonce ${id.id.toString('hex')}`, res)
     return cbor.encode(res)
   }
 
@@ -87,7 +94,6 @@ module.exports = class PrimeaServer {
     id = this._getId(id)
     const node = await this.hypervisor.tree.get(id.id)
     const res = await this.hypervisor.tree.graph.get(node.node, '1')
-    console.log(`getCode ${id.id.toString('hex')}`, res)
     return cbor.encode(res)
   }
 
@@ -95,14 +101,12 @@ module.exports = class PrimeaServer {
     id = this._getId(id)
     const node = await this.hypervisor.tree.get(id.id)
     const res = await this.hypervisor.tree.graph.get(node.node, '2')
-    console.log(`getStorage ${id.id.toString('hex')}`, res.map(r => r.toString('utf-8')))
     return cbor.encode(res)
   }
 
   async getStateRoot () {
     const res = await this.hypervisor.createStateRoot()
-    console.log('getStateRoot', res)
-    return res['/']
+    return res
   }
 
   async setStateRoot (root) {
@@ -120,6 +124,7 @@ module.exports = class PrimeaServer {
     return {
       dbPath: './testdb',
       rootHash: 0,
+      containers: [TestWasmContainer]
     }
   }
 }
