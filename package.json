@@ -32,7 +32,7 @@
   "dependencies": {
     "binary-search-insert": "^1.0.3",
     "borc": "git+https://github.com/dignifiedquire/borc.git#fix/nested-array",
-    "dfinity-radix-tree": "^0.2.1",
+    "dfinity-radix-tree": "git+https://github.com/dfinity/js-dfinity-radix-tree.git",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",
