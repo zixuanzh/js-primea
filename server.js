@@ -33,7 +33,7 @@ const decoder = new cbor.Decoder({
   tags: Object.assign(objectDecoder._knownTags, DfinityTx.getDecoder()._knownTags)
 })
 
-const IO_ACTOR_ID = 0
+const IO_ACTOR_ID = Buffer.from([])
 
 module.exports = class PrimeaServer {
   constructor(opts={}) {
@@ -63,7 +63,7 @@ module.exports = class PrimeaServer {
     })
 
     let id, module, funcRef
-    if (tx.actorId === IO_ACTOR_ID) {
+    if (tx.actorId.equals(IO_ACTOR_ID)) {
       const actor = await this.hypervisor.createActor(this._opts.containers[0].typeId, args.shift())
       id = actor.id
       module = actor.module
