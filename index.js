@@ -1,3 +1,4 @@
+const Buffer = require('safe-buffer').Buffer
 const crypto = require('crypto')
 const Actor = require('./actor.js')
 const Scheduler = require('./scheduler.js')
@@ -20,7 +21,6 @@ module.exports = class Hypervisor {
     drivers.forEach(driver => this.registerDriver(driver))
   }
 
-
   /**
    * sends a message
    * @param {Object} message - the [message](https://github.com/primea/js-primea-message) to send
@@ -33,6 +33,11 @@ module.exports = class Hypervisor {
     this.scheduler.queue(messages)
   }
 
+  /**
+   * loads an actor from the tree given its id
+   * @param {ID} id
+   * @returns {Promise<Actor>}
+   */
   async loadActor (id) {
     const state = await this.tree.get(id.id, true)
     const [code, storage] = await Promise.all([
@@ -113,6 +118,9 @@ module.exports = class Hypervisor {
     return this.tree.flush()
   }
 
+  /**
+   * set the state root
+   */
   async setStateRoot (stateRoot) {
     this.tree.root = stateRoot
     const node = await this.tree.get(Buffer.from([0]))

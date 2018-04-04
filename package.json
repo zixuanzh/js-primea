@@ -1,6 +1,6 @@
 {
   "name": "primea-hypervisor",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "this is a JS implemention of the primea hypervisor",
   "scripts": {
     "coveralls": "npm run coverage && nyc report --reporter=text-lcov | coveralls",
@@ -10,8 +10,7 @@
     "build:docs:hypervisor": "documentation build ./index.js --github --shallow --sort-order source -f md  > ./docs/hypervisor.md",
     "build:docs:actor": "documentation build ./actor.js --github --shallow --sort-order source -f md  > ./docs/actor.md",
     "build:docs:scheduler": "documentation build ./scheduler.js --github --shallow --sort-order source -f md  > ./docs/scheduler.md",
-    "test": "node ./tests/index.js",
-    "test:wasm": "node ./tests/wasmContainer.js"
+    "test": "node ./tests/index.js"
   },
   "repository": {
     "type": "git",
@@ -35,14 +34,8 @@
     "dfinity-radix-tree": "git+https://github.com/dfinity/js-dfinity-radix-tree.git",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
-    "level-browserify": "^1.1.2",
-    "node-fetch": "^2.1.2",
-    "primea-annotations": "0.0.2",
-    "primea-objects": "0.0.1",
-    "reference-map": "^1.2.3",
-    "safe-buffer": "^5.1.1",
-    "wasm-json-toolkit": "^0.2.3",
-    "wasm-metering": "^0.1.1"
+    "primea-objects": "0.0.3",
+    "safe-buffer": "^5.1.1"
   },
   "devDependencies": {
     "coveralls": "^3.0.0",
@@ -50,7 +43,6 @@
     "levelup": "^2.0.2",
     "nyc": "^11.6.0",
     "standard": "11.0.1",
-    "tape": "^4.9.0",
-    "wabt": "^1.0.0"
+    "tape": "^4.9.0"
   }
 }
