@@ -6,6 +6,7 @@ const WasmContainer = require('./wasmContainer.js')
 
 const level = require('level-browserify')
 const RadixTree = require('dfinity-radix-tree')
+const RemoteDataStore = require('./remoteDatastore')
 
 const DfinityTx = require('dfinity-tx')
 
@@ -43,10 +44,18 @@ module.exports = class PrimeaServer {
     const db = level(this._opts.dbPath)
     const rootHash = this._opts.rootHash
 
-    const tree = new RadixTree({
-      db: db,
+    const treeOpts = {
       root: rootHash
-    })
+    }
+
+    if (this._opts.remoteURI) {
+      treeOpts.dag = new RemoteDataStore(db, this._opts.remoteURI)
+      console.log('new primea with RemoteDataStore @', this._opts.remoteURI)
+    } else {
+      treeOpts.db = db
+    }
+
+    const tree = new RadixTree(treeOpts)
 
     this.egress = new EgressDriver()
 
@@ -83,6 +92,11 @@ module.exports = class PrimeaServer {
     return cbor.encode(module)
   }
 
+  async getLink (link) {
+    const res = await this.hypervisor.tree.graph._dag.get(link)
+    return cbor.encode(res)
+  }
+
   async getNonce (id) {
     id = this._getId(id)
     const node = await this.hypervisor.tree.get(id.id)
@@ -109,8 +123,8 @@ module.exports = class PrimeaServer {
     return res
   }
 
-  async setStateRoot (root) {
-    this.hypervisor.setStateRoot(root)
+  setStateRoot (root) {
+    return this.hypervisor.setStateRoot(root)
   }
 
   _getId (encodedId) {
