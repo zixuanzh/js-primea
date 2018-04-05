@@ -2,7 +2,7 @@ const cbor = require('borc')
 const Hypervisor = require('./')
 const EgressDriver = require('./egressDriver')
 const { ID, Message, decoder: objectDecoder } = require('primea-objects')
-const WasmContainer = require('./wasmContainer.js')
+const WasmContainer = require('primea-wasm-container')
 
 const level = require('level-browserify')
 const RadixTree = require('dfinity-radix-tree')
@@ -65,7 +65,7 @@ module.exports = class PrimeaServer {
   async ingress (raw) {
     const [ tx, pk, sig ] = decoder.decodeFirst(raw)
     const args = tx.args.map(arg => {
-      if (arg instanceof cbor.Tagged) {
+      if (arg.constructor.name === 'Tagged') {
         return decoder.decodeFirst(cbor.encode(arg))
       }
       return arg
