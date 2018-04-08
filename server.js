@@ -59,7 +59,11 @@ module.exports = class PrimeaServer {
 
     this.egress = new EgressDriver()
 
-    this.hypervisor = new Hypervisor(tree, this._opts.containers, [this.egress])
+    this.hypervisor = new Hypervisor({
+      tree,
+      containers: this._opts.containers,
+      drivers: [this.egress]
+    })
   }
 
   async ingress (raw) {

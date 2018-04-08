@@ -35,7 +35,7 @@
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "primea-objects": "0.0.3",
-    "primea-wasm-container": "^0.4.1",
+    "primea-wasm-container": "^0.4.2",
     "safe-buffer": "^5.1.1"
   },
   "devDependencies": {
