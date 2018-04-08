@@ -6,7 +6,7 @@ const WasmContainer = require('primea-wasm-container')
 
 const level = require('level-browserify')
 const RadixTree = require('dfinity-radix-tree')
-const RemoteDataStore = require('./remoteDatastore')
+const RemoteDataStore = require('dfinity-radix-tree/remoteDatastore')
 
 const DfinityTx = require('dfinity-tx')
 
@@ -14,19 +14,31 @@ class TestWasmContainer extends WasmContainer {
   constructor (actor) {
     super(actor)
     this._storage = new Map()
-  }
-  getInterface (funcRef) {
-    const orginal = super.getInterface(funcRef)
-    return Object.assign(orginal, {
+    const self = this
+    const inter = {
       test: {
         check: (a, b) => {
+          tester.equals(a, b)
         },
-        print: (dataRef) => {
-          let buf = this.refs.get(dataRef, 'data')
-          console.log(buf.toString())
+        printStr: (dataRef) => {
+          let buf = self.refs.get(dataRef, 'data')
+          console.log('test.printStr:', buf.toString())
+        },
+        printBuf: (dataRef) => {
+          let buf = self.refs.get(dataRef, 'data')
+          console.log('test.printBuf:', buf)
+        },
+        printRaw: (val) => {
+          console.log('test.printRaw:', val)
+        }
+      },
+      env: {
+        abort: () => {
+          console.log('abort!')
         }
       }
-    })
+    }
+    this.interface = Object.assign(this.interface, inter)
   }
 }
 
@@ -49,7 +61,7 @@ module.exports = class PrimeaServer {
     }
 
     if (this._opts.remoteURI) {
-      treeOpts.dag = new RemoteDataStore(db, this._opts.remoteURI)
+      treeOpts.dag = new RemoteDataStore(db, { uri: this._opts.remoteURI })
       console.log('new primea with RemoteDataStore @', this._opts.remoteURI)
     } else {
       treeOpts.db = db
