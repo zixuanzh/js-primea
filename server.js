@@ -1,5 +1,4 @@
 const cbor = require('borc')
-const fs = require('fs-extra')
 const Hypervisor = require('./')
 const EgressDriver = require('./egressDriver')
 const { ID, Message, decoder: objectDecoder } = require('primea-objects')
@@ -54,10 +53,6 @@ module.exports = class PrimeaServer {
     const defaults = this.constructor.defaults
     this._opts = Object.assign(defaults, opts)
 
-    this.createHypervisor()
-  }
-
-  createHypervisor() {
     const db = level(this._opts.dbPath)
     const rootHash = this._opts.rootHash
 
@@ -84,9 +79,7 @@ module.exports = class PrimeaServer {
   }
 
   resetDatastore() {
-    this.hypervisor.tree.dag._dag.close()
-    fs.removeSync(this._opts.dbPath)
-    this.createHypervisor()
+    return this.setStateRoot(RadixTree.emptyTreeState)
   }
 
   async ingress (raw) {
