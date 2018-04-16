@@ -6,10 +6,13 @@ module.exports = class Actor {
    * the Actor manages the varous message passing functions and provides
    * an interface for the containers to use
    * @param {Object} opts
-   * @param {Object} opts.id - the UUID of the Actor
+   * @param {ID} opts.id - the UUID of the Actor
    * @param {Object} opts.state - the state of the container
+   * @param {Object} opts.storage - the actor's persistant storage
    * @param {Object} opts.hypervisor - the instance of the hypervisor
-   * @param {Object} opts.container - the container constuctor and argments
+   * @param {Number} opts.nonce
+   * @param {Number} opts.type - the container type
+   * @param {Function} opts.container - the container constuctor and argments
    */
   constructor (opts) {
     Object.assign(this, opts)
@@ -25,10 +28,10 @@ module.exports = class Actor {
   /**
    * Runs the shutdown routine for the actor
    */
-  async shutdown () {
-    await this.tree.set(this.id.id, [this.type, this.nonce])
-    const state = await this.tree.get(this.id.id)
-    return this.tree.graph.set(state.root, '2', this.storage)
+  shutdown () {
+    // saves the nonce and storage to the state
+    this.state.value[1] = this.nonce
+    this.state.node[2] = {'/': this.storage}
   }
 
   /**
