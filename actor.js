@@ -51,13 +51,14 @@ module.exports = class Actor {
     if (message._fromTicks > this.ticks) {
       this.ticks = message._fromTicks
     }
+    const emitters = this.hypervisor.defaultDriver ? [message, this.hypervisor.defaultDriver] : [message]
     try {
       this.currentMessage = message
       await this.container.onMessage(message)
     } catch (e) {
-      message.emit('execution:error', e)
+      emitters.forEach(emitter => emitter.emit('execution:error', e))
     }
-    message.emit('done', this)
+    emitters.forEach(emitter => emitter.emit('done', message))
   }
 
   /**
