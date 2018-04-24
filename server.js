@@ -69,12 +69,12 @@ module.exports = class PrimeaServer {
 
     const tree = new RadixTree(treeOpts)
 
-    this.egress = new EgressDriver()
+    this.logger = new EgressDriver()
 
     this.hypervisor = new Hypervisor({
       tree,
       containers: this._opts.containers,
-      drivers: [this.egress]
+      defaultDriver: this.logger
     })
   }
 
@@ -92,7 +92,8 @@ module.exports = class PrimeaServer {
     })
 
     let id, module, funcRef
-    if (tx.actorId.equals(IO_ACTOR_ID)) {
+    // should only be used to create root actor
+    if (typeof tx.funcName == 'string') {
       const actor = await this.hypervisor.createActor(this._opts.containers[0].typeId, args.shift())
       id = actor.id
       module = actor.module
@@ -107,7 +108,7 @@ module.exports = class PrimeaServer {
       this.hypervisor.send(new Message({
         funcRef,
         funcArguments: args
-      }).on('execution:error', e => this.egress.emit('error', e)))
+      }))
     }
 
     return cbor.encode(module)
@@ -149,7 +150,7 @@ module.exports = class PrimeaServer {
   }
 
   _getId (encodedId) {
-    if (!(encodedId instanceof ID)) {
+    if (!(typeof encodedId == 'object' && encodedId.constructor.name === 'ID')) {
       return decoder.decodeFirst(encodedId)
     }
     return encodedId
