@@ -1,8 +1,7 @@
 const Buffer = require('safe-buffer').Buffer
 const Actor = require('./actor.js')
 const Scheduler = require('./scheduler.js')
-const { ID, decoder, generateActorId } = require('primea-objects')
-const cbor = require('borc')
+const { decoder, generateActorId } = require('primea-objects')
 
 module.exports = class Hypervisor {
   /**
@@ -23,6 +22,7 @@ module.exports = class Hypervisor {
     this.meter = opts.meter !== undefined ? opts.meter : true;
     (opts.containers || []).forEach(container => this.registerContainer(container));
     (opts.drivers || []).forEach(driver => this.registerDriver(driver))
+    this.defaultDriver = opts.defaultDriver
   }
 
   /**
