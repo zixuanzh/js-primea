@@ -23,6 +23,7 @@ module.exports = class Hypervisor {
     (opts.containers || []).forEach(container => this.registerContainer(container));
     (opts.drivers || []).forEach(driver => this.registerDriver(driver))
     this.defaultDriver = opts.defaultDriver
+    this.onCreateActor = opts.onCreateActor
   }
 
   /**
@@ -78,6 +79,9 @@ module.exports = class Hypervisor {
     const Container = this._containerTypes[type]
     const actorId = generateActorId(id)
     const module = Container.onCreation(code, actorId)
+    if (this.onCreateActor) {
+      this.onCreateActor({ id, actorId, module })
+    }
     const metaData = [type, 0]
 
     // save the container in the state

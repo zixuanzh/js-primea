@@ -74,7 +74,8 @@ module.exports = class PrimeaServer {
     this.hypervisor = new Hypervisor({
       tree,
       containers: this._opts.containers,
-      defaultDriver: this.logger
+      defaultDriver: this.logger,
+      onCreateActor: this._opts.onCreateActor
     })
   }
 
