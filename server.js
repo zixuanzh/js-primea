@@ -151,11 +151,15 @@ module.exports = class PrimeaServer {
     return this.hypervisor.setStateRoot(root)
   }
 
-  _getId (encodedId) {
-    if (!(typeof encodedId == 'object' && encodedId.constructor.name === 'ID')) {
-      return decoder.decodeFirst(encodedId)
+  _getId (id) {
+    if (typeof id == 'object' && id.constructor && id.constructor.name === 'ID') {
+      return id
     }
-    return encodedId
+    try {
+      return decoder.decodeFirst(id)
+    } catch (e) {
+      return new ID(id)
+    }
   }
 
   static get defaults () {
