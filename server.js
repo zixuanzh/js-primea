@@ -91,16 +91,18 @@ module.exports = class PrimeaServer {
       return arg
     })
 
-    let id, module, funcRef
-    // should only be used to create root actor
-    if (typeof tx.funcName == 'string') {
-      const actor = await this.hypervisor.createActor(this._opts.containers[0].typeId, args.shift())
-      id = actor.id
+    let id, module, actor, funcRef
+    if (typeof tx.funcName == 'object' && tx.funcName.constructor && tx.funcName.constructor.name == 'FunctionRef') {
+      funcRef = tx.funcName
+    } else if (tx.actorId.equals(IO_ACTOR_ID)) {
+      actor = await this.hypervisor.createActor(this._opts.containers[0].typeId, args.shift())
       module = actor.module
       funcRef = module.getFuncRef(tx.funcName)
-    } else {
-      module = true
-      funcRef = tx.funcName
+    } else if (typeof tx.funcName == 'string' && tx.actorId) {
+      id = this._getId(tx.actorId)
+      actor = await this.hypervisor.loadActor(id)
+      module = actor.container.modSelf
+      funcRef = module.getFuncRef(tx.funcName)
     }
     funcRef.gas = tx.ticks
 
