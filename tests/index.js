@@ -1,24 +1,27 @@
 const tape = require('tape')
 const Hypervisor = require('../')
 const errors = require('../errors.json')
-const {Message, FunctionRef, ModuleRef} = require('primea-objects')
+const {Message, FunctionRef, ActorRef, ModuleRef} = require('primea-objects')
 
 const level = require('level-browserify')
 const EgressDriver = require('../egressDriver')
 const RadixTree = require('dfinity-radix-tree')
 const db = level('./testdb')
 
-class BaseContainer {
+class BaseModule {
   constructor (actor) {
     this.actor = actor
   }
   onStartup () {}
-  static onCreation (code, id) {
+  static onCreation (code) {
     const exp = {}
     Object.getOwnPropertyNames(this.prototype).filter(name => name !== 'constructor').forEach(name => {
       exp[name] = {}
     })
-    return new ModuleRef(exp, id)
+    return {
+      exports: exp,
+      state: []
+    }
   }
   onMessage (message) {
     return this[message.funcRef.identifier[1]](...message.funcArguments)
@@ -38,10 +41,11 @@ tape('system objects', async t => {
   let mod
   let funcref
 
-  class testVMContainer extends BaseContainer {
+  class TestModule extends BaseModule {
     store () {
       id = this.actor.id.id.toString('hex')
-      mod = new ModuleRef({'test': ['i32', 'i64']}, this.actor.id)
+      const modRef = new ModuleRef(1, 1, {'test': ['i32', 'i64']})
+      mod = new ActorRef(this.actor.id, modRef)
       funcref = mod.getFuncRef('test')
       this.actor.storage = [this.actor.id, {'/': 'test'}, mod, funcref]
     }
@@ -57,17 +61,17 @@ tape('system objects', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainer]})
-  const {module} = hypervisor.createActor(testVMContainer.typeId)
+  const hypervisor = new Hypervisor({tree, modules: [TestModule]})
+  const actor = hypervisor.newActor(TestModule)
   const message = new Message({
-    funcRef: module.getFuncRef('store')
+    funcRef: actor.getFuncRef('store')
   })
 
   hypervisor.send(message)
   await hypervisor.createStateRoot()
 
   const message2 = new Message({
-    funcRef: module.getFuncRef('load')
+    funcRef: actor.getFuncRef('load')
   })
   hypervisor.send(message2)
   await hypervisor.createStateRoot()
@@ -75,42 +79,44 @@ tape('system objects', async t => {
 })
 
 tape('basic', async t => {
-  t.plan(2)
-  const expectedState = Buffer.from('32b919149345b74e431c42a1b7dd65c30c625284', 'hex')
+  // t.plan(2)
+  const expectedState = Buffer.from('757b51d7da3195f9bb9d211c8fd382fc526b31e6', 'hex')
   const tree = new RadixTree({
     db
   })
 
-  class testVMContainer extends BaseContainer {
+  class TestModule extends BaseModule {
     main (m) {
       t.equals(m, 1, 'should recive a message')
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainer]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModule]})
   await hypervisor.createStateRoot()
 
-  const {module} = hypervisor.createActor(testVMContainer.typeId)
+  const module = hypervisor.createModule(TestModule)
+  const actor = hypervisor.createActor(module)
 
   const message = new Message({
-    funcRef: module.getFuncRef('main'),
+    funcRef: actor.getFuncRef('main'),
     funcArguments: [1]
   })
   hypervisor.send(message)
 
   const stateRoot2 = await hypervisor.createStateRoot()
   t.deepEquals(stateRoot2, expectedState, 'expected root!')
+  t.end()
 })
 
 tape('two communicating actors', async t => {
   t.plan(2)
-  const expectedState = Buffer.from('7f638e41261bc0238c3e9b34fce11827b6a3cb61', 'hex')
+  const expectedState = Buffer.from('dc389dcfe9350e2fd0a570ca4e0c9dba801dc7ca', 'hex')
 
   const tree = new RadixTree({
     db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef) {
       const message = new Message({
         funcRef,
@@ -120,7 +126,7 @@ tape('two communicating actors', async t => {
     }
   }
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (args) {
       t.equals(args, 2, 'should recive a message')
     }
@@ -130,14 +136,17 @@ tape('two communicating actors', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({
+    tree,
+    modules: [TestModuleA, TestModuleB]
+  })
 
-  const {module: moduleB} = hypervisor.createActor(testVMContainerB.typeId)
-  const {module: moduleA} = hypervisor.createActor(testVMContainerA.typeId)
+  const actorB = hypervisor.newActor(TestModuleB)
+  const actorA = hypervisor.newActor(TestModuleA)
 
   const message = new Message({
-    funcRef: moduleA.getFuncRef('main'),
-    funcArguments: [moduleB.getFuncRef('main')]
+    funcRef: actorA.getFuncRef('main'),
+    funcArguments: [actorB.getFuncRef('main')]
   })
 
   hypervisor.send(message)
@@ -148,12 +157,12 @@ tape('two communicating actors', async t => {
 
 tape('three communicating actors', async t => {
   t.plan(3)
-  const expectedState = Buffer.from('ae2e8afa84748192064ddebab30d0e9852ceb722', 'hex')
+  const expectedState = Buffer.from('916a9ce593fdd553723118ca82d11caa28b76e99', 'hex')
   const tree = new RadixTree({
     db: db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef) {
       const message = new Message({
         funcRef: funcRef,
@@ -163,7 +172,7 @@ tape('three communicating actors', async t => {
     }
   }
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (arg) {
       t.equals(arg, 2, 'should recive a message')
     }
@@ -173,20 +182,20 @@ tape('three communicating actors', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleA, TestModuleB]})
 
-  let {module: moduleB} = hypervisor.createActor(testVMContainerB.typeId)
-  let {module: moduleA0} = hypervisor.createActor(testVMContainerA.typeId)
-  let {module: moduleA1} = hypervisor.createActor(testVMContainerA.typeId)
+  let actorB = hypervisor.newActor(TestModuleB)
+  let actorA0 = hypervisor.newActor(TestModuleA)
+  let actorA1 = hypervisor.newActor(TestModuleA)
 
   const message0 = new Message({
-    funcRef: moduleA0.getFuncRef('main'),
-    funcArguments: [moduleB.getFuncRef('main')]
+    funcRef: actorA0.getFuncRef('main'),
+    funcArguments: [actorB.getFuncRef('main')]
   })
 
   const message1 = new Message({
-    funcRef: moduleA1.getFuncRef('main'),
-    funcArguments: [moduleB.getFuncRef('main')]
+    funcRef: actorA1.getFuncRef('main'),
+    funcArguments: [actorB.getFuncRef('main')]
   })
 
   await hypervisor.send(message0)
@@ -198,12 +207,12 @@ tape('three communicating actors', async t => {
 
 tape('three communicating actors, with tick counting', async t => {
   t.plan(3)
-  const expectedState = Buffer.from('ae2e8afa84748192064ddebab30d0e9852ceb722', 'hex')
+  const expectedState = Buffer.from('916a9ce593fdd553723118ca82d11caa28b76e99', 'hex')
   const tree = new RadixTree({
-    db: db
+    db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef) {
       this.actor.incrementTicks(1)
       const message = new Message({
@@ -214,7 +223,7 @@ tape('three communicating actors, with tick counting', async t => {
     }
   }
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (arg) {
       t.equals(arg, 2, 'should recive a message')
     }
@@ -224,24 +233,24 @@ tape('three communicating actors, with tick counting', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleA, TestModuleB]})
 
-  let actorB = hypervisor.createActor(testVMContainerB.typeId)
-  let actorA0 = hypervisor.createActor(testVMContainerA.typeId)
-  let actorA1 = hypervisor.createActor(testVMContainerA.typeId)
+  let actorB = hypervisor.newActor(TestModuleB)
+  let actorA0 = hypervisor.newActor(TestModuleA)
+  let actorA1 = hypervisor.newActor(TestModuleA)
 
-  const funcRef0 = actorA0.module.getFuncRef('main')
+  const funcRef0 = actorA0.getFuncRef('main')
   funcRef0.gas = 10000
 
   const message0 = new Message({
     funcRef: funcRef0,
-    funcArguments: [actorB.module.getFuncRef('main')]
+    funcArguments: [actorB.getFuncRef('main')]
   })
-  const funcRef1 = actorA1.module.getFuncRef('main')
+  const funcRef1 = actorA1.getFuncRef('main')
   funcRef1.gas = 10000
   const message1 = new Message({
     funcRef: funcRef1,
-    funcArguments: [actorB.module.getFuncRef('main')]
+    funcArguments: [actorB.getFuncRef('main')]
   })
 
   hypervisor.send(message0)
@@ -253,12 +262,12 @@ tape('three communicating actors, with tick counting', async t => {
 
 tape('errors', async t => {
   t.plan(3)
-  const expectedState = Buffer.from('7f638e41261bc0238c3e9b34fce11827b6a3cb61', 'hex')
+  const expectedState = Buffer.from('dc389dcfe9350e2fd0a570ca4e0c9dba801dc7ca', 'hex')
   const tree = new RadixTree({
     db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef) {
       const message = new Message({
         funcRef
@@ -270,7 +279,7 @@ tape('errors', async t => {
     }
   }
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (funcRef) {
       t.true(true, 'should recive a message')
       throw new Error('test error')
@@ -281,15 +290,13 @@ tape('errors', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree})
-  hypervisor.registerContainer(testVMContainerA)
-  hypervisor.registerContainer(testVMContainerB)
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleB, TestModuleA]})
 
-  let {module: moduleB} = hypervisor.createActor(testVMContainerB.typeId)
-  let {module: moduleA} = hypervisor.createActor(testVMContainerA.typeId)
+  let actorB = hypervisor.newActor(TestModuleB)
+  let actorA = hypervisor.newActor(TestModuleA)
   const message = new Message({
-    funcRef: moduleA.getFuncRef('main'),
-    funcArguments: [moduleB.getFuncRef('main')]
+    funcRef: actorA.getFuncRef('main'),
+    funcArguments: [actorB.getFuncRef('main')]
   })
   hypervisor.send(message)
   const stateRoot = await hypervisor.createStateRoot()
@@ -302,19 +309,19 @@ tape('out-of-gas', async t => {
     db
   })
 
-  class testVMContainer extends BaseContainer {
+  class testVMContainer extends BaseModule {
     main (m) {
       this.actor.incrementTicks(1)
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainer]})
+  const hypervisor = new Hypervisor({tree, modules: [testVMContainer]})
   await hypervisor.createStateRoot()
 
-  const {module} = hypervisor.createActor(testVMContainer.typeId)
+  const actor = hypervisor.newActor(testVMContainer)
 
   const message = new Message({
-    funcRef: module.getFuncRef('main'),
+    funcRef: actor.getFuncRef('main'),
     funcArguments: [1]
   }).on('execution:error', e => {
     t.equals(e.message, errors.OUT_OF_GAS)
@@ -328,7 +335,7 @@ tape('no mettering', async t => {
     db
   })
 
-  class testVMContainer extends BaseContainer {
+  class testVMContainer extends BaseModule {
     main (m) {
       this.actor.incrementTicks(1)
       t.pass('shouldnt meter')
@@ -337,15 +344,15 @@ tape('no mettering', async t => {
 
   const hypervisor = new Hypervisor({
     tree,
-    containers: [testVMContainer],
+    modules: [testVMContainer],
     meter: false
   })
   await hypervisor.createStateRoot()
 
-  const {module} = hypervisor.createActor(testVMContainer.typeId)
+  const actor = hypervisor.newActor(testVMContainer)
 
   const message = new Message({
-    funcRef: module.getFuncRef('main'),
+    funcRef: actor.getFuncRef('main'),
     funcArguments: [1]
   })
   hypervisor.send(message)
@@ -353,17 +360,17 @@ tape('no mettering', async t => {
 
 tape('actor creation', async t => {
   t.plan(2)
-  const expectedState = Buffer.from('0e6d32f2fe8b5b99f0203eb46bfc7e319a07f700', 'hex')
+  const expectedState = Buffer.from('aa0089210c2ee081f299c84a31b55898e4aad339', 'hex')
 
   const tree = new RadixTree({
     db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     async start (funcRef) {
-      const {module} = this.actor.createActor(testVMContainerB.typeId)
+      const actor = this.actor.newActor(TestModuleB)
       const message = new Message({
-        funcRef: module.getFuncRef('main'),
+        funcRef: actor.getFuncRef('main'),
         funcArguments: [{
           identifier: [0, 'main'],
           actorID: this.actor.id
@@ -376,7 +383,7 @@ tape('actor creation', async t => {
     }
   }
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (funcRef) {
       this.actor.send(new Message({funcRef, funcArguments: ['test']}))
     }
@@ -386,10 +393,10 @@ tape('actor creation', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleA, TestModuleB]})
 
-  const {module} = hypervisor.createActor(testVMContainerA.typeId)
-  await hypervisor.send(new Message({funcRef: module.getFuncRef('start')}))
+  const actor = hypervisor.newActor(TestModuleA)
+  await hypervisor.send(new Message({funcRef: actor.getFuncRef('start')}))
 
   const stateRoot = await hypervisor.createStateRoot()
   t.deepEquals(stateRoot, expectedState, 'expected root!')
@@ -398,12 +405,12 @@ tape('actor creation', async t => {
 
 tape('simple message arbiter test', async t => {
   t.plan(4)
-  const expectedState = Buffer.from('7f638e41261bc0238c3e9b34fce11827b6a3cb61', 'hex')
+  const expectedState = Buffer.from('dc389dcfe9350e2fd0a570ca4e0c9dba801dc7ca', 'hex')
   const tree = new RadixTree({
     db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef) {
       funcRef.gas = 1000
       const message1 = new Message({
@@ -428,7 +435,7 @@ tape('simple message arbiter test', async t => {
 
   let recMsg = 0
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (data) {
       this.actor.incrementTicks(1)
       if (recMsg === 0) {
@@ -446,16 +453,16 @@ tape('simple message arbiter test', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleA, TestModuleB]})
 
-  const {module: moduleB} = hypervisor.createActor(testVMContainerB.typeId)
-  const {module: moduleA} = hypervisor.createActor(testVMContainerA.typeId)
-  const funcRef = moduleA.getFuncRef('main')
+  const actorB = hypervisor.newActor(TestModuleB)
+  const actorA = hypervisor.newActor(TestModuleA)
+  const funcRef = actorA.getFuncRef('main')
   funcRef.gas = 4000
 
   const message = new Message({
     funcRef,
-    funcArguments: [moduleB.getFuncRef('main')]
+    funcArguments: [actorB.getFuncRef('main')]
   })
   hypervisor.send(message)
 
@@ -466,13 +473,13 @@ tape('simple message arbiter test', async t => {
 tape('arbiter test for id comparision', async t => {
   t.plan(5)
   let message
-  const expectedState = Buffer.from('ae2e8afa84748192064ddebab30d0e9852ceb722', 'hex')
+  const expectedState = Buffer.from('916a9ce593fdd553723118ca82d11caa28b76e99', 'hex')
 
   const tree = new RadixTree({
     db: db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef, funcArguments) {
       message = new Message({
         funcRef,
@@ -484,7 +491,7 @@ tape('arbiter test for id comparision', async t => {
 
   let recMsg = 0
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (data) {
       if (recMsg === 0) {
         t.equal(data, 'first', 'should recive fist message')
@@ -501,46 +508,46 @@ tape('arbiter test for id comparision', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleA, TestModuleB]})
 
-  let {module: moduleB} = hypervisor.createActor(testVMContainerB.typeId)
+  let actorB = hypervisor.newActor(TestModuleB)
   hypervisor.send(new Message({
-    funcRef: moduleB.getFuncRef('main'),
+    funcRef: actorB.getFuncRef('main'),
     funcArguments: ['first']
   }))
 
   const sr1 = await hypervisor.createStateRoot()
 
-  const {module: moduleA0} = hypervisor.createActor(testVMContainerA.typeId)
+  const actorA1 = hypervisor.newActor(TestModuleA)
+  const actorA0 = hypervisor.newActor(TestModuleA)
 
   hypervisor.send(new Message({
-    funcRef: moduleA0.getFuncRef('main'),
-    funcArguments: [moduleB.getFuncRef('main'), 'second']
+    funcRef: actorA0.getFuncRef('main'),
+    funcArguments: [actorB.getFuncRef('main'), 'second']
   }))
 
-  const {module: moduleA1} = hypervisor.createActor(testVMContainerA.typeId)
   hypervisor.send(new Message({
-    funcRef: moduleA1.getFuncRef('main'),
-    funcArguments: [moduleB.getFuncRef('main'), 'third']
+    funcRef: actorA1.getFuncRef('main'),
+    funcArguments: [actorB.getFuncRef('main'), 'third']
   }))
 
   const stateRoot = await hypervisor.createStateRoot()
   t.deepEquals(stateRoot, expectedState, 'expected root!')
 
   await hypervisor.setStateRoot(sr1)
-  t.equals(hypervisor.nonce, 1, 'should get the correct nonce')
+  t.equals(hypervisor.nonce, 2, 'should get the correct nonce')
   t.end()
 })
 
 tape('async work', async t => {
   t.plan(3)
-  const expectedState = Buffer.from('7f638e41261bc0238c3e9b34fce11827b6a3cb61', 'hex')
+  const expectedState = Buffer.from('dc389dcfe9350e2fd0a570ca4e0c9dba801dc7ca', 'hex')
 
   const tree = new RadixTree({
     db
   })
 
-  class testVMContainerA extends BaseContainer {
+  class TestModuleA extends BaseModule {
     main (funcRef) {
       funcRef.gas = 10
       const message = new Message({
@@ -563,7 +570,7 @@ tape('async work', async t => {
     }
   }
 
-  class testVMContainerB extends BaseContainer {
+  class TestModuleB extends BaseModule {
     main (args) {
       this.actor.incrementTicks(1)
       t.equals(args, 2, 'should recive a message')
@@ -574,16 +581,16 @@ tape('async work', async t => {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, containers: [testVMContainerA, testVMContainerB]})
+  const hypervisor = new Hypervisor({tree, modules: [TestModuleA, TestModuleB]})
 
-  const {module: moduleB} = hypervisor.createActor(testVMContainerB.typeId)
-  const {module: moduleA} = hypervisor.createActor(testVMContainerA.typeId)
-  const funcRef = moduleA.getFuncRef('main')
+  const actorB = hypervisor.newActor(TestModuleB)
+  const actorA = hypervisor.newActor(TestModuleA)
+  const funcRef = actorA.getFuncRef('main')
   funcRef.gas = 200
 
   const message = new Message({
     funcRef,
-    funcArguments: [moduleB.getFuncRef('main')]
+    funcArguments: [actorB.getFuncRef('main')]
   })
 
   hypervisor.send(message)
@@ -604,7 +611,7 @@ tape('driver', async t => {
     t.end()
   })
 
-  class testVMContainer extends BaseContainer {
+  class testVMContainer extends BaseModule {
     main (funcRef) {
       this.actor.send(new Message({
         funcRef,
@@ -615,13 +622,13 @@ tape('driver', async t => {
 
   const hypervisor = new Hypervisor({
     tree,
-    containers: [testVMContainer],
+    modules: [testVMContainer],
     drivers: [egress]
   })
-  const {module} = hypervisor.createActor(testVMContainer.typeId)
+  const actor = hypervisor.newActor(testVMContainer)
 
   const message = new Message({
-    funcRef: module.getFuncRef('main'),
+    funcRef: actor.getFuncRef('main'),
     funcArguments: [new FunctionRef({actorID: egress.id})]
   })
 
@@ -637,7 +644,7 @@ tape('random', async t => {
     db
   })
 
-  class BenchmarkContainer extends BaseContainer {
+  class BenchmarkContainer extends BaseModule {
     main () {
       const refs = [...arguments]
       const ref = refs.pop()
@@ -661,13 +668,13 @@ tape('random', async t => {
   }
 
   const hypervisor = new Hypervisor({tree})
-  hypervisor.registerContainer(BenchmarkContainer)
+  hypervisor.registerModule(BenchmarkContainer)
 
   const references = []
   let _numOfActors = numOfActors
   while (_numOfActors--) {
-    const {module} = hypervisor.createActor(BenchmarkContainer.typeId)
-    const funcRef = module.getFuncRef('main')
+    const actor = hypervisor.newActor(BenchmarkContainer)
+    const funcRef = actor.getFuncRef('main')
     references.push(funcRef)
   }
   _numOfActors = numOfActors
