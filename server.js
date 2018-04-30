@@ -73,9 +73,9 @@ module.exports = class PrimeaServer {
 
     this.hypervisor = new Hypervisor({
       tree,
-      containers: this._opts.containers,
+      modules: this._opts.modules,
       defaultDriver: this.logger,
-      onCreateActor: this._opts.onCreateActor
+      onGenerateId: this._opts.onGenerateId
     })
   }
 
@@ -92,18 +92,19 @@ module.exports = class PrimeaServer {
       return arg
     })
 
-    let id, module, actor, funcRef
+    let id, actor, funcRef
     if (typeof tx.funcName == 'object' && tx.funcName.constructor && tx.funcName.constructor.name == 'FunctionRef') {
       funcRef = tx.funcName
-    } else if (tx.actorId.equals(IO_ACTOR_ID)) {
-      actor = await this.hypervisor.createActor(this._opts.containers[0].typeId, args.shift())
-      module = actor.module
-      funcRef = module.getFuncRef(tx.funcName)
-    } else if (typeof tx.funcName == 'string' && tx.actorId) {
+
+    } else if (Buffer.isBuffer(tx.actorId) && IO_ACTOR_ID.equals(tx.actorId)) {
+      actor = await this.hypervisor.newActor(this._opts.modules[0], args.shift())
+      funcRef = actor.getFuncRef(tx.funcName)
+
+    } else if (typeof tx.funcName == 'string') {
       id = this._getId(tx.actorId)
-      actor = await this.hypervisor.loadActor(id)
-      module = actor.container.modSelf
-      funcRef = module.getFuncRef(tx.funcName)
+      const _actor = await this.hypervisor.loadActor(id)
+      actor = _actor.container.actorSelf
+      funcRef = actor.getFuncRef(tx.funcName)
     }
     funcRef.gas = tx.ticks
 
@@ -114,7 +115,14 @@ module.exports = class PrimeaServer {
       }))
     }
 
-    return cbor.encode(module)
+    return cbor.encode(actor)
+  }
+
+  async getActor (id) {
+    id = this._getId(id)
+    const actor = await this.hypervisor.loadActor(id)
+    const actorRef = actor.container.actorSelf
+    return cbor.encode(actorRef)
   }
 
   async getLink (link) {
@@ -132,8 +140,9 @@ module.exports = class PrimeaServer {
   async getCode (id) {
     id = this._getId(id)
     const node = await this.hypervisor.tree.get(id.id)
-    const res = await this.hypervisor.tree.graph.get(node.node, '1')
-    return cbor.encode(res)
+    const module = await this.hypervisor.tree.graph.get(node.node, '1')
+    await this.hypervisor.tree.graph.get(module[1], '')
+    return cbor.encode(module[1]['/'])
   }
 
   async getStorage (id) {
@@ -167,7 +176,7 @@ module.exports = class PrimeaServer {
     return {
       dbPath: './testdb',
       rootHash: 0,
-      containers: [TestWasmContainer]
+      modules: [TestWasmContainer]
     }
   }
 }

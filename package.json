@@ -36,7 +36,7 @@
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",
     "primea-objects": "0.0.6",
-    "primea-wasm-container": "^0.4.2",
+    "primea-wasm-container": "git+ssh://git@github.com/primea/js-primea-wasm-container.git#actorRef",
     "safe-buffer": "^5.1.2"
   },
   "devDependencies": {
