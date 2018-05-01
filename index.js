@@ -23,6 +23,9 @@ module.exports = class Hypervisor {
     (opts.modules || []).forEach(mod => this.registerModule(mod));
     (opts.drivers || []).forEach(driver => this.registerDriver(driver))
     this.defaultDriver = opts.defaultDriver
+    if (this.defaultDriver) {
+      this.registerDriver(this.defaultDriver)
+    }
     this.onGenerateId = opts.onGenerateId
   }
 
