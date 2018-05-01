@@ -73,6 +73,7 @@ module.exports = class PrimeaServer {
 
     this.hypervisor = new Hypervisor({
       tree,
+      meter: this._opts.meter,
       modules: this._opts.modules,
       defaultDriver: this.logger,
       onGenerateId: this._opts.onGenerateId
@@ -176,7 +177,8 @@ module.exports = class PrimeaServer {
     return {
       dbPath: './testdb',
       rootHash: 0,
-      modules: [TestWasmContainer]
+      modules: [TestWasmContainer],
+      meter: true
     }
   }
 }
