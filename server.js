@@ -17,20 +17,14 @@ class TestWasmContainer extends WasmContainer {
     const self = this
     const inter = {
       test: {
-        check: (a, b) => {
-          tester.equals(a, b)
-        },
-        printStr: (dataRef) => {
-          let buf = self.refs.get(dataRef, 'data')
-          console.log('test.printStr:', buf.toString())
-        },
-        printBuf: (dataRef) => {
-          let buf = self.refs.get(dataRef, 'data')
-          console.log('test.printBuf:', buf)
-        },
-        printRaw: (val) => {
-          console.log('test.printRaw:', val)
-        }
+        check: (a, b) => tester.equals(a, b),
+        printStr: (ref) => console.log('test.printStr:', self.refs.get(ref, 'data').toString()),
+        printData: (ref) => console.log('test.printData:', self.refs.get(ref, 'data')),
+        printAny: (ref) => console.log('test.printAny:', self.refs.get(ref, 'anyref')),
+        printFunc: (ref) => console.log('test.printFunc:', self.refs.get(ref, 'func')),
+        printModule: (ref) => console.log('test.printModule:', self.refs.get(ref, 'mod')),
+        printActor: (ref) => console.log('test.printActor:', self.refs.get(ref, 'actor')),
+        print: (val) => console.log('test.print:', val)
       },
       env: {
         abort: () => {
@@ -87,7 +81,7 @@ module.exports = class PrimeaServer {
   async ingress (raw) {
     const [ tx, pk, sig ] = decoder.decodeFirst(raw)
     const args = tx.args.map(arg => {
-      if (arg.constructor.name === 'Tagged') {
+      if (typeof arg === 'object' && arg.constructor.name === 'Tagged') {
         return decoder.decodeFirst(cbor.encode(arg))
       }
       return arg
@@ -96,6 +90,7 @@ module.exports = class PrimeaServer {
     let id, actor, funcRef
     if (typeof tx.funcName == 'object' && tx.funcName.constructor && tx.funcName.constructor.name == 'FunctionRef') {
       funcRef = tx.funcName
+      actor = funcRef.actorID
 
     } else if (Buffer.isBuffer(tx.actorId) && IO_ACTOR_ID.equals(tx.actorId)) {
       actor = await this.hypervisor.newActor(this._opts.modules[0], args.shift())
