@@ -104,6 +104,18 @@ module.exports = class PrimeaServer {
     }
     funcRef.gas = tx.ticks
 
+    // cast Number to i64
+    if (funcRef.params && funcRef.params.includes('i64') && args.length <= funcRef.params.length) {
+      let argsIndex = 0
+      for (let i = 0; i < funcRef.params.length; i++) {
+        if (funcRef.params[i] === 'i64') {
+          args.splice(argsIndex, 0, 0)
+          argsIndex++
+        }
+        argsIndex++
+      }
+    }
+
     if (tx.funcName) {
       this.hypervisor.send(new Message({
         funcRef,
