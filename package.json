@@ -30,18 +30,17 @@
   "license": "MPL-2.0",
   "dependencies": {
     "binary-search-insert": "^1.0.3",
-    "borc": "git+https://github.com/dignifiedquire/borc.git#fix/nested-array",
-    "dfinity-radix-tree": "^0.2.2",
+    "borc": "^2.0.3",
+    "dfinity-radix-tree": "^0.2.3",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",
-    "primea-objects": "0.0.6",
-    "primea-wasm-container": "^0.8.0",
+    "primea-objects": "^0.0.9",
+    "primea-wasm-container": "^0.8.1",
     "safe-buffer": "^5.1.2"
   },
   "devDependencies": {
     "coveralls": "^3.0.0",
-    "dfinity-radix-tree": "^0.2.2",
     "documentation": "^6.3.2",
     "nyc": "^11.7.1",
     "standard": "11.0.1",
