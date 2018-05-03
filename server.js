@@ -70,7 +70,7 @@ module.exports = class PrimeaServer {
       meter: this._opts.meter,
       modules: this._opts.modules,
       defaultDriver: this.logger,
-      onGenerateId: this._opts.onGenerateId
+      onCreate: this._opts.onCreate
     })
   }
 
@@ -94,7 +94,9 @@ module.exports = class PrimeaServer {
 
     } else if (Buffer.isBuffer(tx.actorId) && IO_ACTOR_ID.equals(tx.actorId)) {
       actor = await this.hypervisor.newActor(this._opts.modules[0], args.shift())
-      funcRef = actor.getFuncRef(tx.funcName)
+      if (tx.funcName) {
+        funcRef = actor.getFuncRef(tx.funcName)
+      }
 
     } else if (typeof tx.funcName == 'string') {
       id = this._getId(tx.actorId)
@@ -102,10 +104,9 @@ module.exports = class PrimeaServer {
       actor = _actor.container.actorSelf
       funcRef = actor.getFuncRef(tx.funcName)
     }
-    funcRef.gas = tx.ticks
 
     // cast Number to i64
-    if (funcRef.params && funcRef.params.includes('i64') && args.length <= funcRef.params.length) {
+    if (funcRef && funcRef.params && funcRef.params.includes('i64') && args.length <= funcRef.params.length) {
       let argsIndex = 0
       for (let i = 0; i < funcRef.params.length; i++) {
         if (funcRef.params[i] === 'i64') {
@@ -116,7 +117,9 @@ module.exports = class PrimeaServer {
       }
     }
 
-    if (tx.funcName) {
+    if (funcRef) {
+      funcRef.gas = tx.ticks
+
       this.hypervisor.send(new Message({
         funcRef,
         funcArguments: args

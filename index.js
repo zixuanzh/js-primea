@@ -26,7 +26,7 @@ module.exports = class Hypervisor {
     if (this.defaultDriver) {
       this.registerDriver(this.defaultDriver)
     }
-    this.onGenerateId = opts.onGenerateId
+    this.onCreate = opts.onCreate
   }
 
   /**
@@ -92,12 +92,15 @@ module.exports = class Hypervisor {
    */
   createModule (mod, code, id = {nonce: this.nonce++, parent: null}) {
     const moduleID = generateId(id)
-    if (this.onGenerateId) {
-      this.onGenerateId({ id, idObj: moduleID, type: 'mod' })
-    }
     const Module = this._modules[mod.typeId]
     const {exports, state} = Module.onCreation(code)
-    return new ModuleRef(moduleID, mod.typeId, exports, state, code)
+    const modRef = new ModuleRef(moduleID, mod.typeId, exports, state, code)
+
+    if (this.onCreate) {
+      this.onCreate({ id, ref: modRef })
+    }
+
+    return modRef
   }
 
   /**
@@ -108,9 +111,6 @@ module.exports = class Hypervisor {
    */
   createActor (modRef, id = {nonce: this.nonce++, parent: null}) {
     const actorId = generateId(id)
-    if (this.onGenerateId) {
-      this.onGenerateId({ id, idObj: actorId, type: 'actor' })
-    }
     const metaData = [modRef.type, 0]
 
     // save the container in the state
@@ -125,7 +125,13 @@ module.exports = class Hypervisor {
       }
     })
 
-    return new ActorRef(actorId, modRef)
+    const actorRef = new ActorRef(actorId, modRef)
+
+    if (this.onCreate) {
+      this.onCreate({ id, ref: actorRef })
+    }
+
+    return actorRef
   }
 
   /**
