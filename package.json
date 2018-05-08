@@ -1,6 +1,6 @@
 {
   "name": "primea-hypervisor",
-  "version": "0.7.2",
+  "version": "0.9.0",
   "description": "this is a JS implemention of the primea hypervisor",
   "scripts": {
     "coveralls": "npm run coverage && nyc report --reporter=text-lcov | coveralls",
@@ -31,12 +31,13 @@
   "dependencies": {
     "binary-search-insert": "^1.0.3",
     "borc": "^2.0.3",
+    "debug": "^3.1.0",
     "dfinity-radix-tree": "^0.2.3",
     "dfinity-tx": "git+https://github.com/dfinity/js-dfinity-tx.git",
     "events": "^2.0.0",
     "level-browserify": "^1.1.2",
-    "primea-objects": "^0.0.9",
-    "primea-wasm-container": "^0.8.1",
+    "primea-objects": "^0.0.11",
+    "primea-wasm-container": "^0.9.0",
     "safe-buffer": "^5.1.2"
   },
   "devDependencies": {

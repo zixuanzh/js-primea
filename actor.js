@@ -1,5 +1,6 @@
 const errors = require('./errors.json')
 const nope = () => {}
+const debug = require('debug')('lifecycle:error')
 
 module.exports = class Actor {
   /**
@@ -56,6 +57,7 @@ module.exports = class Actor {
       this.currentMessage = message
       await this.container.onMessage(message)
     } catch (e) {
+      debug(e)
       emitters.forEach(emitter => emitter.emit('execution:error', e))
     }
     emitters.forEach(emitter => emitter.emit('done', message))
