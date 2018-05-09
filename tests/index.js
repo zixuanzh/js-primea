@@ -373,7 +373,7 @@ tape('actor creation', async t => {
         funcRef: actor.getFuncRef('main'),
         funcArguments: [{
           identifier: [0, 'main'],
-          actorID: this.actor.id
+          actorId: this.actor.id
         }]
       })
       this.actor.send(message)
@@ -629,7 +629,7 @@ tape('driver', async t => {
 
   const message = new Message({
     funcRef: actor.getFuncRef('main'),
-    funcArguments: [new FunctionRef({actorID: egress.id})]
+    funcArguments: [new FunctionRef({actorId: egress.id})]
   })
 
   hypervisor.send(message)

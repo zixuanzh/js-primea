@@ -90,7 +90,7 @@ module.exports = class PrimeaServer {
     let id, actor, funcRef
     if (typeof tx.funcName == 'object' && tx.funcName.constructor && tx.funcName.constructor.name == 'FunctionRef') {
       funcRef = tx.funcName
-      actor = funcRef.actorID
+      actor = funcRef.actorId
 
     } else if (Buffer.isBuffer(tx.actorId) && IO_ACTOR_ID.equals(tx.actorId)) {
       actor = await this.hypervisor.newActor(this._opts.modules[0], args.shift())

@@ -125,7 +125,7 @@ module.exports = class Hypervisor {
       }]
       // save the storage
       node[2] = {
-        '/': modRef.state
+        '/': modRef.persist
       }
     })
 
