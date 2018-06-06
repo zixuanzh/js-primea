@@ -1,4 +1,4 @@
-const {Message, ModuleRef} = require('primea-objects')
+const {Message} = require('primea-objects')
 const Hypervisor = require('../')
 
 const level = require('level-browserify')
@@ -50,7 +50,10 @@ async function main (numOfActors, depth) {
     }
   }
 
-  const hypervisor = new Hypervisor({tree, meter: false})
+  const hypervisor = new Hypervisor({
+    tree,
+    meter: false
+  })
   hypervisor.registerModule(BenchmarkContainer)
 
   const refernces = []
